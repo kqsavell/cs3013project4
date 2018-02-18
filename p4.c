@@ -65,14 +65,34 @@ int find_address(int pnum)
 // Writes integer into memory, start is the physical address we want to write to
 int write_mem(int start, char* value)
 {
-
-    return 0;
+    int i;
+    for(i = start; i < 16; i++)
+    {
+	if(value[i - start])
+            memory[i] = value[i - start];
+	else
+	   break;
+    }
+    
+    return (i - start); // Number of bytes written
 }
 
 // Reads integer from memory
 int read_mem(int start)
 {
-    int read_val = 0;
+    int read_val;
+    char buffer[4];
+    for(int i = 0; i < 3; i++)
+    {
+	if(memory[start + i])
+            buffer[i] = memory[start + i];
+        else
+	{
+            buffer[i] = '\0';
+	    break;
+	}
+    }
+    sscanf(buffer, "%d", &read_val);
     return read_val;
 }
 
