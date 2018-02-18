@@ -6,8 +6,6 @@
 
 #define SIZE 64
 
-char* itoa(int value, char* str, int base);
-
 // Memory
 unsigned char memory[SIZE];
 
@@ -73,7 +71,7 @@ int write_mem(int start, char* value)
 	else
 	   break;
     }
-    
+
     return (i - start); // Number of bytes written
 }
 
@@ -205,7 +203,12 @@ int main(int argc, char *argv[])
     int inst_type = 0; // Instruction type
     int v_addr = 0; // Virtual address
     int input = 0; // Value
-    int is_end = 0;
+    int is_end = 0; // Boolean for ending simulation
+
+    char buffer[20]; // Holds stdin buffer
+    char cmd_seq[20]; // The command sequence read from stdin
+    char* cmd_array[4]; // Holds the commands read from file
+    char* token;
 
     // Initialize ptable, free and write lists
     for (int i = 0; i < 4; i++)
@@ -223,46 +226,101 @@ int main(int argc, char *argv[])
 
     while (is_end != 1)
     {
-        // Read stdin
+
         printf("Instructions?: ");
-        if (argc >= 2)
+        // Recieve stdin
+        if (argc <= 1)
         {
-            pid = atoi(argv[1]);
-        }
-        if (argc >= 3)
-        {
-            if (strncmp(argv[2], "map", sizeof(argv[2])))
+            // Read sequence from file
+            if (fgets(buffer, sizeof(buffer), stdin) == NULL)
+            {
+                is_end = 1;
+                printf("End of File. Exiting\n");
+                break;
+            }
+            buffer[strcspn(buffer, "\n")] = 0; //Remove newline
+            strncpy(cmd_seq, &buffer[0], sizeof(cmd_seq));
+            printf("%s\n", cmd_seq);
+
+            // Parse sequence
+            token = strtok(cmd_seq, " ");
+            int i = 0;
+            while (token != NULL)
+            {
+                printf("Token: %s\n", token);
+                if (i >= 4)
+                {
+                    printf("ERROR: Too many input arguments!\n");
+                    break;
+                }
+                cmd_array[i] = token;
+                i++;
+                token = strtok(NULL, " ");
+            }
+
+            // Put sequence into variables
+            pid = atoi(cmd_array[0]);
+            if (strncmp(cmd_array[1], "map", sizeof(cmd_array[1])))
             {
                 inst_type = 1;
             }
-            if (strncmp(argv[2], "store", sizeof(argv[2])))
+            else if (strncmp(cmd_array[1], "store", sizeof(cmd_array[1])))
             {
                 inst_type = 2;
             }
-            if (strncmp(argv[2], "load", sizeof(argv[2])))
+            else if (strncmp(cmd_array[1], "load", sizeof(cmd_array[1])))
             {
                 inst_type = 3;
             }
+            v_addr = atoi(cmd_array[2]);
+            input = atoi(cmd_array[3]);
         }
-        if (argc >= 4)
+
+        // Read argv
+        else
         {
-            v_addr = atoi(argv[3]);
+            if (argc >= 2)
+            {
+                pid = atoi(argv[1]);
+            }
+            if (argc >= 3)
+            {
+                if (strncmp(argv[2], "map", sizeof(argv[2])))
+                {
+                    inst_type = 1;
+                }
+                else if (strncmp(argv[2], "store", sizeof(argv[2])))
+                {
+                    inst_type = 2;
+                }
+                else if (strncmp(argv[2], "load", sizeof(argv[2])))
+                {
+                    inst_type = 3;
+                }
+            }
+            if (argc >= 4)
+            {
+                v_addr = atoi(argv[3]);
+            }
+            if (argc >= 5)
+            {
+                input = atoi(argv[4]);
+            }
         }
-        if (argc >= 5)
-        {
-            input = atoi(argv[4]);
-        }
-        printf("%d, %s, %d, %d\n", pid, argv[2], v_addr, input);
+
+        if (is_end == 1) break; // Break if EOF
+
+        printf("Parsed command: %d, %d, %d, %d\n", pid, inst_type, v_addr, input);
 
         if (inst_type == 1)
         {
             map(pid, v_addr, input);
         }
-        if (inst_type == 2)
+        else if (inst_type == 2)
         {
             store(pid, v_addr, input);
         }
-        if (inst_type == 3)
+        else if (inst_type == 3)
         {
             load(pid, v_addr);
         }
