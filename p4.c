@@ -97,7 +97,36 @@ int read_mem(int start)
 // Translate page table, return physical address
 int translate_ptable(int pid, int v_addr)
 {
-    return 0;
+    int pt_start = pid_array[pid]; // Get address of page table for that process
+    char int_buf[10]; // Holds the string that makes up an address index
+    int cur_v_addr = 0;
+    int phys_addr = -1;
+
+    //Get physical address
+    int cur_addr = pt_start;
+    for (int i = 0; i < 16; i++) // Only look up to end of page table virtual page
+    {
+        if (strncmp(&memory[cur_addr], ",", sizeof(memory[cur_addr]))) // End of virtual address for PTE
+        {
+            cur_v_addr = atoi(int_buf);
+            memset(&int_buf[0], 0, sizeof(int_buf));
+        }
+        else if (strncmp(&memory[cur_addr], ".", sizeof(memory[cur_addr]))) // End of PTE
+        {
+            if (cur_v_addr == v_addr)
+            {
+                phys_addr = atoi(int_buf);
+            }
+            memset(&int_buf[0], 0, sizeof(int_buf));
+        }
+        else // Reading address
+        {
+            strncat(int_buf, &memory[cur_addr], 2);
+        }
+        cur_addr++;
+    }
+
+    return phys_addr; // Return physical address, -1 if address not found
 }
 
 // Allocates page table entry into virtual page
@@ -247,7 +276,6 @@ int main(int argc, char *argv[])
             int i = 0;
             while (token != NULL)
             {
-                printf("Token: %s\n", token);
                 if (i >= 4)
                 {
                     printf("ERROR: Too many input arguments!\n");
@@ -259,16 +287,16 @@ int main(int argc, char *argv[])
             }
 
             // Put sequence into variables
-            pid = atoi(cmd_array[0]);
-            if (strncmp(cmd_array[1], "map", sizeof(cmd_array[1])))
+            pid = atoi(cmd_array[0]);\
+            if (strncmp(cmd_array[1], "map", sizeof(cmd_array[1])) == 0)
             {
                 inst_type = 1;
             }
-            else if (strncmp(cmd_array[1], "store", sizeof(cmd_array[1])))
+            else if (strncmp(cmd_array[1], "store", sizeof(cmd_array[1])) == 0)
             {
                 inst_type = 2;
             }
-            else if (strncmp(cmd_array[1], "load", sizeof(cmd_array[1])))
+            else if (strncmp(cmd_array[1], "load", sizeof(cmd_array[1])) == 0)
             {
                 inst_type = 3;
             }
@@ -285,15 +313,15 @@ int main(int argc, char *argv[])
             }
             if (argc >= 3)
             {
-                if (strncmp(argv[2], "map", sizeof(argv[2])))
+                if (strncmp(argv[2], "map", sizeof(argv[2])) == 0)
                 {
                     inst_type = 1;
                 }
-                else if (strncmp(argv[2], "store", sizeof(argv[2])))
+                else if (strncmp(argv[2], "store", sizeof(argv[2])) == 0)
                 {
                     inst_type = 2;
                 }
-                else if (strncmp(argv[2], "load", sizeof(argv[2])))
+                else if (strncmp(argv[2], "load", sizeof(argv[2])) == 0)
                 {
                     inst_type = 3;
                 }
