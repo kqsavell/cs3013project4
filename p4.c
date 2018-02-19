@@ -66,10 +66,10 @@ int write_mem(int start, char* value)
     int i;
     for(i = start; i < 16; i++)
     {
-	if(value[i - start])
+        if(value[i - start])
             memory[i] = value[i - start];
-	else
-	   break;
+        else
+            break;
     }
 
     return (i - start); // Number of bytes written
@@ -82,13 +82,13 @@ int read_mem(int start)
     char buffer[4];
     for(int i = 0; i < 3; i++)
     {
-	if(memory[start + i])
+        if(memory[start + i])
             buffer[i] = memory[start + i];
         else
-	{
+        {
             buffer[i] = '\0';
-	    break;
-	}
+            break;
+        }
     }
     sscanf(buffer, "%d", &read_val);
     return read_val;
@@ -135,7 +135,8 @@ int create_ptable(int pid)
     int been_allocated = -1;
     for(int i = 0; i < 4; i++)
     {
-        if (free_list[i] == -1) {
+        if (free_list[i] == -1)
+        {
             free_list[i] = 0;
             pid_array[pid] = find_address(i); // Put physical address into pid register
             been_allocated = 1;
@@ -165,7 +166,8 @@ int map(int pid, int v_addr, int value)
 
     for(int i = 0; i < 4; i++)
     {
-        if (free_list[i] == -1) {
+        if (free_list[i] == -1)
+        {
             free_list[i] = 0;
             write_list[i] = value; // Set permissions
             been_allocated = 1;
@@ -186,7 +188,7 @@ int map(int pid, int v_addr, int value)
                 }
                 write_addr++;
             }
-            printf("Mapped virtual address %d (page %d) into physical frame %d\n", v_addr, page_table, i);
+            printf("Mapped virtual address %d (page %d) into physical frame %d\n", v_addr, find_page(v_addr), i);
             break;
         }
     }
@@ -210,7 +212,8 @@ int store(int pid, int v_addr, int value)
         write_mem(phys_addr, buffer);
         printf("Stored value %d at virtual address %d (physical address %d)\n", value, v_addr, phys_addr);
     }
-    else{
+    else
+    {
         printf("ERROR; writes are not allowed to this page\n");
     }
 
@@ -242,9 +245,9 @@ int main(int argc, char *argv[])
     // Initialize ptable, free and write lists
     for (int i = 0; i < 4; i++)
     {
-        pid_array[i] == -1;
-        free_list[i] == -1;
-        write_list[i] == 1;
+        pid_array[i] = -1;
+        free_list[i] = -1;
+        write_list[i] = 1;
     }
 
     //Initialiaze physical memory
@@ -287,7 +290,8 @@ int main(int argc, char *argv[])
             }
 
             // Put sequence into variables
-            pid = atoi(cmd_array[0]);\
+            pid = atoi(cmd_array[0]);
+            \
             if (strncmp(cmd_array[1], "map", sizeof(cmd_array[1])) == 0)
             {
                 inst_type = 1;
