@@ -98,47 +98,66 @@ int read_mem(int start)
             break;
         }
     }
-
-    sscanf(buffer, "%d", &read_val);
-    return read_val;
+    if(buffer[0] == '\0') return -1;
+    else
+    {
+        sscanf(buffer, "%d", &read_val);
+        return read_val;
+    }
 }
 
 // Translate page table, return physical address
+// ptable format is an array {0,',',1,1,',',2} -> single digit to immediate left of , is virtual page, single digit to immediate right of , is physical page the vitual page is mapped to.
+// In example, virtual page 0 is mapped to physical page 1 & virtual page 1 is mapped to physical page 2
 int translate_ptable(int pid, int v_addr)
 {
-    int pt_start = pid_array[pid]; // Get address of page table for that process
-    char int_buf[10] = ""; // Holds the string that makes up an address index
-    int cur_v_addr = 0;
-    int phys_addr = -1;
-    int diff = -1;
+    /*
+        int pt_start = pid_array[pid]; // Get address of page table for that process
+        char int_buf[10] = ""; // Holds the string that makes up an address index
+        int cur_v_addr = 0;
+        int phys_addr = -1;
+        int diff = -1;
 
-    //Get physical address
-    int cur_addr = pt_start;
+        //Get physical address
+        int cur_addr = pt_start;
+        for (int i = 0; i < 16; i++) // Only look up to end of page table virtual page
+        {
+            if (memory[cur_addr] == ',') // End of virtual address for PTE
+            {
+                cur_v_addr = atoi(int_buf);int_buf[0] = '\0';
+                memset(&int_buf[0], 0, sizeof(int_buf));
+            }
+            else if (memory[cur_addr] == '.') // End of PTE
+            {
+                if(diff == -1) diff = atoi(int_buf) - cur_v_addr;
+                if (cur_v_addr == v_addr)
+                {
+                    phys_addr = atoi(int_buf);
+                }
+                memset(&int_buf[0], 0, sizeof(int_buf));
+
+            }
+            else // Reading address
+            {
+    	    if(isdigit(memory[cur_addr]))
+                    strncat(int_buf, &memory[cur_addr], 1);
+            }
+            cur_addr++;
+        }
+        if(phys_addr == -1) phys_addr = v_addr + diff;
+    */
+    int start = pid_array[pid];
+    int phys_addr = -1;
+    int cur_addr = start;
     for (int i = 0; i < 16; i++) // Only look up to end of page table virtual page
     {
-        if (memory[cur_addr] == ',') // End of virtual address for PTE
+        if (memory[cur_addr] == ',') // PTE Separator
         {
-            cur_v_addr = atoi(int_buf);int_buf[0] = '\0';
-            memset(&int_buf[0], 0, sizeof(int_buf));
-        }
-        else if (memory[cur_addr] == '.') // End of PTE
-        {
-            if(diff == -1) diff = atoi(int_buf) - cur_v_addr;
-            if (cur_v_addr == v_addr)
-            {
-                phys_addr = atoi(int_buf);
-            }
-            memset(&int_buf[0], 0, sizeof(int_buf));
-
-        }
-        else // Reading address
-        {
-	    if(isdigit(memory[cur_addr]))
-                strncat(int_buf, &memory[cur_addr], 1);
+            if(memory[cur_addr - 1] - '0' == find_page(v_addr))
+                return find_address(memory[cur_addr + 1] - '0') + v_addr;
         }
         cur_addr++;
     }
-    if(phys_addr == -1) phys_addr = v_addr + diff;
     return phys_addr; // Return physical address, -1 if address not found
 }
 
@@ -165,13 +184,16 @@ int create_ptable(int pid)
 }
 
 // Allocates physical page
-int map(int pid, int v_addr, int value)
+int map(int pid, int v_addr, int r_value)
 {
     int page_table = pid_array[pid];
     int been_allocated = -1;
     char full_str[16] = "";
     char buffer[10];
     char new_entry[10];
+
+    int v_page = find_page(v_addr);
+    int p_page;
 
     // Create page table for process if one does not exist
     if (page_table == -1)
@@ -209,7 +231,7 @@ int map(int pid, int v_addr, int value)
         }
         start_addr++;
     }*/
-
+    /*
     // Create new entry
     memset(&buffer[0], 0, sizeof(buffer));
     for(int i = 0; i < 4; i++)
@@ -217,7 +239,7 @@ int map(int pid, int v_addr, int value)
         if (free_list[i] == -1)
         {
             free_list[i] = 0;
-            write_list[i] = value; // Set permissions
+            write_list[i] = r_value; // Set permissions
             been_allocated = 1;
 
             int write_addr = pid_array[pid];
@@ -241,7 +263,39 @@ int map(int pid, int v_addr, int value)
             break;
         }
     }
+    */
 
+    // Create new entry
+    memset(&buffer[0], 0, sizeof(buffer));
+    for(int i = 0; i < 4; i++)
+    {
+        if (free_list[i] == -1)
+        {
+            free_list[i] = 0;
+            write_list[i] = r_value; // Set permissions
+            been_allocated = 1;
+            p_page = i;
+
+            int write_addr = pid_array[pid];
+            for(int j = 0; j < 16; j++)
+            {
+                if (memory[write_addr] == '*') // Write entry to ptable
+                {
+                    sprintf(buffer, "%d", v_page);
+                    strcat(full_str, buffer);
+                    strcat(full_str, ",");
+                    sprintf(buffer, "%d", p_page);
+                    strcat(full_str, buffer);
+                    write_addr += write_mem(write_addr, full_str);
+                    break;
+                }
+                write_addr++;
+            }
+
+            printf("Mapped virtual address %d (page %d) into physical frame %d\n", v_addr, v_page, p_page);
+            break;
+        }
+    }
     if (been_allocated == -1)
     {
         printf("ERROR: No free space, Memory is full!\n");
@@ -270,7 +324,7 @@ int store(int pid, int v_addr, int value)
     }
     else
     {
-        printf("ERROR; writes are not allowed to this page\n");
+        printf("ERROR: writes are not allowed to this page\n");
     }
 
     return 0; // Success
@@ -280,7 +334,7 @@ int load(int pid, int v_addr)
 {
     int phys_addr = translate_ptable(pid, v_addr);
     int value = read_mem(phys_addr);
-    if  ((value < 0) || (value > 255))
+    if  (value == -1)
     {
         printf("ERROR: No value stored at virtual address %d (physical address %d)\n", v_addr, phys_addr);
     }
@@ -355,7 +409,7 @@ int main(int argc, char *argv[])
 
             // Put sequence into variables
             pid = atoi(cmd_array[0]);
-            \
+
             if (strncmp(cmd_array[1], "map", sizeof(cmd_array[1])) == 0)
             {
                 inst_type = 1;
@@ -419,6 +473,5 @@ int main(int argc, char *argv[])
             load(pid, v_addr);
         }
     }
-
     return 0;
 }
