@@ -81,9 +81,9 @@ int read_mem(int start)
 {
     int read_val;
     char buffer[4];
-    for(int i = 0; i < 3; i++)
+    for(int i = 0; i < 4; i++)
     {
-        if(memory[start + i] != '*')
+        if(memory[start + i] != '*' && i != 3)
             buffer[i] = memory[start + i];
         else
         {
