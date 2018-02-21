@@ -45,22 +45,6 @@ int getFromDisk(char (*pageHolder)[16], int lineNum); // Gets page from disk
 int find_page(int addr)
 {
     return (addr/16);
-    /*if (v_addr < 16)
-    {
-        return 0;
-    }
-    else if (v_addr < 32)
-    {
-        return 1;
-    }
-    else if (v_addr < 48)
-    {
-        return 2;
-    }
-    else
-    {
-        return 3;
-    }*/
 }
 
 // Returns address of the start of a given page
@@ -230,37 +214,6 @@ int map(int pid, int v_addr, int r_value)
         write_list[pid][v_page] = r_value;
     }
 
-    // Check if entry already exists and update it
-    /*int start_addr = page_table;
-    int overwrite = 0;
-    for (int i = 0; i < 16; i++)
-    {
-        if (memory[start_addr] == ',')
-        {
-            if (v_addr == atoi(buffer))
-            {
-                overwrite = 1;
-            }
-        }
-        else if (memory[start_addr] == '.')
-        {
-            overwrite = 0;
-            memset(&buffer[0], 0, sizeof(buffer));
-        }
-        else if (memory[start_addr] != '*')
-        {
-            if (overwrite == 1)
-            {
-                write_mem(start_addr, sprintf(new_entry, "%d", 0));
-            }
-            else
-            {
-                strncat(buffer, &memory[start_addr], 1);
-            }
-        }
-        start_addr++;
-    }*/
-
     // Create new entry
     // memset(&buffer[0], 0, sizeof(buffer));
     else
@@ -354,6 +307,60 @@ int load(int pid, int v_addr)
     }
 
     return 0; // Success
+}
+
+// Changes mapping of virtual page in a page table when swapping in from disk
+int remap(int v_page)
+{
+    // Change physical address of page and overwrite entry in page table
+    for(int i = 0; i < 4; i++)
+        {
+            if (free_list[i] == -1)
+            {
+                free_list[i] = 0;
+                been_allocated = 1;
+                p_page = i;
+
+                int write_addr = pid_array[pid];
+                int v_flag = 1; // Whether specific entry is virtual page or not
+                int p_flag = 0; // Whether specific entry is a physical page or not
+                int correct_p = 0; // Flag for correct page to overwrite
+                for(int j = 0; j < 16; j++)
+                {
+                    if (p_flag == 1) // Pointer on physical page position
+                    {
+                        if (correct_p == 1) // If correct page to overwrite, do that
+                        {
+                            sprintf(buffer, "%d", p_page);
+                            strcat(full_str, buffer);
+                            write_addr += write_mem(write_addr, full_str);
+                            break;
+                        }
+                        p_flag = 0;
+                        v_flag = 0;
+                    }
+                    else if (memory[write_addr] == ',') // Pointer on in-between position
+                    {
+                        v_flag = 0;
+                        p_flag = 1;
+                    }
+
+                    else if ((memory[write_addr] == v_page + '0') && (v_flag == 1)) // If correct virtual page, prepare overwrite
+                    {
+                        correct_p = 1;
+                    }
+                    write_addr++;
+                }
+
+                printf("Remapped virtual page %d into physical frame %d\n", v_page, p_page);
+                break;
+            }
+        }
+        if (been_allocated == -1)
+        {
+            printf("ERROR: No free space, Memory is full!\n");
+        }
+    }
 }
 
 // Swaps page from physical memory and disk
