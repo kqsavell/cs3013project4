@@ -24,10 +24,27 @@ int write_list[MAX_PROC][MAX_PAGES];
 // Existing Pages
 int page_exists[MAX_PROC][MAX_PAGES];
 
-// Map virtual page to virtual address
-int find_page(int v_addr)
+// Disk
+FILE *disk;
+
+// Function Declarations
+int find_page(int addr); // Returns a corresponding page based on an address
+int find_address(int page); // Returns address of the start of a given page
+int write_mem(int start, char* value); // Writes integer into memory, start is the physical address we want to write to
+int read_mem(int start); // Reads integer from memory
+int translate_ptable(int pid, int v_addr); // Translate page table, return physical address from virtual address
+int create_ptable(int pid); // Allocates page table entry into virtual page
+int map(int pid, int v_addr, int r_value); // Maps virtual page to physical page
+int store(int pid, int v_addr, int value); // Stores value in physical memory
+int load(int pid, int v_addr); // Loads value from physical memory
+int swap(int page, int lineNum); // Swaps page from physical memory and disk
+int putToDisk(char page[16]); // Puts page in disk
+int getFromDisk(char (*pageHolder)[16], int lineNum); // Gets page from disk
+
+// Returns a corresponding page based on an address
+int find_page(int addr)
 {
-    return (v_addr/16);
+    return (addr/16);
     /*if (v_addr < 16)
     {
         return 0;
@@ -46,18 +63,18 @@ int find_page(int v_addr)
     }*/
 }
 
-// Map virtual page to virtual address
-int find_address(int pnum)
+// Returns address of the start of a given page
+int find_address(int page)
 {
-    if (pnum == 0)
+    if (page == 0)
     {
         return 0;
     }
-    else if (pnum == 1)
+    else if (page == 1)
     {
         return 16;
     }
-    else if (pnum == 2)
+    else if (page == 2)
     {
         return 32;
     }
@@ -112,7 +129,7 @@ int read_mem(int start)
     }
 }
 
-// Translate page table, return physical address
+// Translate page table, return physical address from virtual address
 // ptable format is an array {0,',',1,1,',',2} -> single digit to immediate left of , is virtual page, single digit to immediate right of , is physical page the vitual page is mapped to.
 // In example, virtual page 0 is mapped to physical page 1 & virtual page 1 is mapped to physical page 2
 int translate_ptable(int pid, int v_addr)
@@ -189,7 +206,7 @@ int create_ptable(int pid)
     }
 }
 
-// Allocates physical page
+// Maps virtual page to physical page
 int map(int pid, int v_addr, int r_value)
 {
     int page_table = pid_array[pid];
@@ -287,6 +304,7 @@ int map(int pid, int v_addr, int r_value)
     return 0; // Success
 }
 
+// Stores value in physical memory
 int store(int pid, int v_addr, int value)
 {
     int phys_addr = translate_ptable(pid, v_addr);
@@ -321,6 +339,7 @@ int store(int pid, int v_addr, int value)
     return 0; // Success
 }
 
+// Loads value from physical memory
 int load(int pid, int v_addr)
 {
     int phys_addr = translate_ptable(pid, v_addr);
@@ -335,6 +354,148 @@ int load(int pid, int v_addr)
     }
 
     return 0; // Success
+}
+
+// Swaps page from physical memory and disk
+int swap(int page, int lineNum)
+{
+    int start = find_address(page);
+    char putTemp[16];
+    char getTemp[16];
+
+    for(int i = 0; i < 16; i++)
+    {
+        putTemp[i] = memory[start + i];
+    }
+
+    if(putToDisk(putTemp) == -1)
+    {
+        printf("ERROR: Could not put page to disk.\n");
+        return -1;
+    }
+
+    else
+        if(getFromDisk(&getTemp, lineNum) == -1)
+        {
+            printf("ERROR: Could not get page from disk.\n");
+            return -1;
+        }
+
+    return 0;
+}
+
+// Puts page in disk
+int putToDisk(char page[16])
+{
+    int line_placement = -1; // Where line is on disk
+    int newLine = -1;
+    char currChar;
+
+    disk = fopen("disk.txt", "r+");
+    if(disk == NULL)
+    {
+        printf("ERROR: Cannot open disk.\n");
+    }
+
+    do
+    {
+        currChar = fgetc(disk);
+        if(feof(disk) && line_placement == -1) // Empty file, put page in
+        {
+            for(int i = 0; i < 16; i++)
+            {
+                fputc(page[i], disk);
+            }
+            fputc('\n', disk);
+            line_placement = 0;
+            break;
+        }
+        else
+        {
+            if(currChar == '\n')
+            {
+                newLine = 1;
+                line_placement++;
+            }
+            else if(currChar == '*' && newLine != -1) // Last character was a new line
+            {
+                fseek(disk, -1, SEEK_CUR);
+                for(int i = 0; i < 16; i++)
+                {
+                    fputc(page[i], disk);
+                }
+                fputc('\n', disk);
+                newLine = -1;
+            }
+            else
+            {
+                newLine = -1;
+            }
+        }
+    }
+    while(currChar != EOF);
+
+
+    fclose(disk);
+
+    return line_placement;
+}
+
+// Gets page from disk
+int getFromDisk(char (*pageHolder)[16], int lineNum)
+{
+    int line_placement = -1; // Where line is on disk
+    int newLine = -1;
+    char currChar;
+
+    disk = fopen("disk.txt", "r+");
+    if(disk == NULL)
+    {
+        printf("ERROR: Cannot open disk.\n");
+        return -1;
+    }
+
+    do
+    {
+        currChar = fgetc(disk);
+        if(feof(disk) && line_placement == -1)
+        {
+            printf("ERROR: Cannot get page from empty disk.\n");
+            fclose(disk);
+            return -1;
+        }
+        else
+        {
+            if(currChar == '\n')
+            {
+                newLine = 1;
+                line_placement++;
+            }
+            else if(currChar != '*' && newLine != -1 && line_placement == lineNum) // Last character was a new line
+            {
+                fseek(disk, -1, SEEK_CUR);
+                for(int i = 0; i < 16; i++)
+                {
+                    currChar = fgetc(disk);
+                    (*pageHolder)[i] = currChar;
+                    fseek(disk, -1, SEEK_CUR);
+                    fputc('*', disk);
+                }
+                fputc('\n', disk);
+                newLine = -1;
+                break;
+            }
+            else
+            {
+                newLine = -1;
+            }
+        }
+    }
+    while(currChar != EOF);
+
+    fclose(disk);
+
+    return 0;
 }
 
 // Main
@@ -371,7 +532,6 @@ int main(int argc, char *argv[])
 
     while (is_end != 1)
     {
-
         printf("Instruction?: ");
         // Recieve stdin
         if (argc <= 1)
