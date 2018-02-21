@@ -6,23 +6,29 @@
 #include <ctype.h>
 
 #define SIZE 64
+#define MAX_PROC 4
+#define MAX_PAGES 10
 
 // Memory
 unsigned char memory[SIZE];
 
 // PID array
-int pid_array[4];
+int pid_array[MAX_PROC];
 
 // Free list
-int free_list[4];
+int free_list[MAX_PROC];
 
 // Permissions
-int write_list[4];
+int write_list[MAX_PROC][MAX_PAGES];
+
+// Existing Pages
+int page_exists[MAX_PROC][MAX_PAGES];
 
 // Map virtual page to virtual address
 int find_page(int v_addr)
 {
-    if (v_addr < 16)
+    return (v_addr/16);
+    /*if (v_addr < 16)
     {
         return 0;
     }
@@ -37,7 +43,7 @@ int find_page(int v_addr)
     else
     {
         return 3;
-    }
+    }*/
 }
 
 // Map virtual page to virtual address
@@ -202,6 +208,12 @@ int map(int pid, int v_addr, int r_value)
     }
 
     // Check if entry already exists and update it
+    if (page_exists[pid][v_page] == 1)
+    {
+        write_list[pid][v_page] = r_value;
+    }
+
+    // Check if entry already exists and update it
     /*int start_addr = page_table;
     int overwrite = 0;
     for (int i = 0; i < 16; i++)
@@ -231,74 +243,45 @@ int map(int pid, int v_addr, int r_value)
         }
         start_addr++;
     }*/
-    /*
-    // Create new entry
-    memset(&buffer[0], 0, sizeof(buffer));
-    for(int i = 0; i < 4; i++)
-    {
-        if (free_list[i] == -1)
-        {
-            free_list[i] = 0;
-            write_list[i] = r_value; // Set permissions
-            been_allocated = 1;
-
-            int write_addr = pid_array[pid];
-            for(int j = 0; j < 16; j++)
-            {
-                if (memory[write_addr] == '*') // Write entry to ptable
-                {
-                    sprintf(buffer, "%d", v_addr);
-                    strcat(full_str, buffer);
-                    strcat(full_str, ",");
-                    sprintf(buffer, "%d", find_address(i) + v_addr);
-                    strcat(full_str, buffer);
-                    strcat(full_str, ".");
-                    write_addr += write_mem(write_addr, full_str);
-                    break;
-                }
-                write_addr++;
-            }
-
-            printf("Mapped virtual address %d (page %d) into physical frame %d\n", v_addr, find_page(v_addr), i);
-            break;
-        }
-    }
-    */
 
     // Create new entry
-    memset(&buffer[0], 0, sizeof(buffer));
-    for(int i = 0; i < 4; i++)
+    // memset(&buffer[0], 0, sizeof(buffer));
+    else
     {
-        if (free_list[i] == -1)
+        for(int i = 0; i < 4; i++)
         {
-            free_list[i] = 0;
-            write_list[i] = r_value; // Set permissions
-            been_allocated = 1;
-            p_page = i;
-
-            int write_addr = pid_array[pid];
-            for(int j = 0; j < 16; j++)
+            if (free_list[i] == -1)
             {
-                if (memory[write_addr] == '*') // Write entry to ptable
-                {
-                    sprintf(buffer, "%d", v_page);
-                    strcat(full_str, buffer);
-                    strcat(full_str, ",");
-                    sprintf(buffer, "%d", p_page);
-                    strcat(full_str, buffer);
-                    write_addr += write_mem(write_addr, full_str);
-                    break;
-                }
-                write_addr++;
-            }
+                free_list[i] = 0;
+                write_list[pid][v_page] = r_value; // Set permissions
+                page_exists[pid][v_page] = 1; // Set existence of page
+                been_allocated = 1;
+                p_page = i;
 
-            printf("Mapped virtual address %d (page %d) into physical frame %d\n", v_addr, v_page, p_page);
-            break;
+                int write_addr = pid_array[pid];
+                for(int j = 0; j < 16; j++)
+                {
+                    if (memory[write_addr] == '*') // Write entry to ptable
+                    {
+                        sprintf(buffer, "%d", v_page);
+                        strcat(full_str, buffer);
+                        strcat(full_str, ",");
+                        sprintf(buffer, "%d", p_page);
+                        strcat(full_str, buffer);
+                        write_addr += write_mem(write_addr, full_str);
+                        break;
+                    }
+                    write_addr++;
+                }
+
+                printf("Mapped virtual address %d (page %d) into physical frame %d\n", v_addr, v_page, p_page);
+                break;
+            }
         }
-    }
-    if (been_allocated == -1)
-    {
-        printf("ERROR: No free space, Memory is full!\n");
+        if (been_allocated == -1)
+        {
+            printf("ERROR: No free space, Memory is full!\n");
+        }
     }
 
     return 0; // Success
@@ -307,19 +290,27 @@ int map(int pid, int v_addr, int r_value)
 int store(int pid, int v_addr, int value)
 {
     int phys_addr = translate_ptable(pid, v_addr);
+    int v_page= find_page(v_addr);
     char buffer[10] = "";
 
-    if (write_list[find_page(phys_addr)] == 1)
+    if (write_list[pid][v_page] == 1)
     {
-        sprintf(buffer, "%d", value);
-        int num_bytes = write_mem(phys_addr, buffer);
-        if (num_bytes == -1)
+        if (page_exists[pid][v_page] == 1)
         {
-            printf("ERROR: Write goes over end of page! Value not stored\n");
+            sprintf(buffer, "%d", value);
+            int num_bytes = write_mem(phys_addr, buffer);
+            if (num_bytes == -1)
+            {
+                printf("ERROR: Write goes over end of page! Value not stored\n");
+            }
+            else
+            {
+                printf("Stored value %d at virtual address %d (physical address %d)\n", value, v_addr, phys_addr);
+            }
         }
         else
         {
-            printf("Stored value %d at virtual address %d (physical address %d)\n", value, v_addr, phys_addr);
+            printf("ERROR: Virtual page %d has not been allocated for process %d!\n", v_page, pid);
         }
     }
     else
@@ -365,7 +356,11 @@ int main(int argc, char *argv[])
     {
         pid_array[i] = -1;
         free_list[i] = -1;
-        write_list[i] = 1;
+        for (int j = 0; j < 10; j++)
+        {
+            write_list[i][j] = 0;
+            page_exists[i][j] = 0;
+        }
     }
 
     //Initialiaze physical memory
