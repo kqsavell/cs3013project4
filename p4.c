@@ -27,6 +27,9 @@ int page_exists[MAX_PROC][MAX_PAGES];
 // Disk
 FILE *disk;
 
+// Round Robin Eviction
+int last_evict = 0;
+
 // Function Declarations
 int find_page(int addr); // Returns a corresponding page based on an address
 int find_address(int page); // Returns address of the start of a given page
@@ -37,6 +40,8 @@ int create_ptable(int pid); // Allocates page table entry into virtual page
 int map(int pid, int v_addr, int r_value); // Maps virtual page to physical page
 int store(int pid, int v_addr, int value); // Stores value in physical memory
 int load(int pid, int v_addr); // Loads value from physical memory
+int evict(int pid); // Returns physical page that is to be evicted
+int remap(int pid, int v_page); //Remaps virtual page if pulled from disk
 int swap(int page, int lineNum); // Swaps page from physical memory and disk
 int putToDisk(char page[16]); // Puts page in disk
 int getFromDisk(char (*pageHolder)[16], int lineNum); // Gets page from disk
@@ -309,10 +314,38 @@ int load(int pid, int v_addr)
     return 0; // Success
 }
 
+// Chooses physical page to evict from memory
+// Current algorithm is round robin, will skip page if it is the process's page table
+int evict(int pid)
+{
+    int ptable = find_page(pid_array[pid]); // Physical page where pid's ptable is
+
+    int cur_evict = last_evict + 1;
+    if (cur_evict >= 5)
+    {
+        cur_evict = 0;
+    }
+    if (cur_evict == ptable)
+    {
+        cur_evict++;
+        if (cur_evict >= 5)
+        {
+            cur_evict = 0;
+        }
+    }
+
+    last_evict = cur_evict;
+    return cur_evict;
+}
+
 // Changes mapping of virtual page in a page table when swapping in from disk
-int remap(int v_page)
+int remap(int pid, int v_page)
 {
     // Change physical address of page and overwrite entry in page table
+    char full_str[16] = "";
+    char buffer[10];
+    int been_allocated = -1;
+    int p_page;
     for(int i = 0; i < 4; i++)
         {
             if (free_list[i] == -1)
@@ -356,11 +389,11 @@ int remap(int v_page)
                 break;
             }
         }
-        if (been_allocated == -1)
-        {
-            printf("ERROR: No free space, Memory is full!\n");
-        }
+    if (been_allocated == -1)
+    {
+        printf("ERROR: No free space, Memory is full!\n");
     }
+    return 0; //Success
 }
 
 // Swaps page from physical memory and disk
