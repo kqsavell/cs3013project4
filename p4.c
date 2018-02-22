@@ -42,7 +42,7 @@ int store(int pid, int v_addr, int value); // Stores value in physical memory
 int load(int pid, int v_addr); // Loads value from physical memory
 int evict(int pid); // Returns physical page that is to be evicted
 int remap(int pid, int v_page); //Remaps virtual page if pulled from disk
-int swap(int page, int lineNum); // Swaps page from physical memory and disk
+int swap(int page, int lineNum); // Swaps page from physical memory and disk, returns lineNum page was put in disk
 int putToDisk(char page[16]); // Puts page in disk
 int getFromDisk(char (*pageHolder)[16], int lineNum); // Gets page from disk
 
@@ -405,13 +405,14 @@ int remap(int pid, int v_page)
     return 0; //Success
 }
 
-// Swaps page from physical memory and disk
+// Swaps page from physical memory and disk, returns lineNum page was put in disk
 int swap(int page, int lineNum)
 {
     int start = find_address(page);
     char putTemp[16];
     char getTemp[16];
     int replaceMem = -1;
+    int putLine = -1;
 
     for(int i = 0; i < 16; i++)
     {
@@ -419,8 +420,9 @@ int swap(int page, int lineNum)
     }
 
     replaceMem = getFromDisk(&getTemp, lineNum);
+    putLine = putToDisk(putTemp);
 
-    if(putToDisk(putTemp) == -1)
+    if(putLine == -1)
     {
         printf("ERROR: Could not put page to disk.\n");
         return -1;
@@ -440,7 +442,7 @@ int swap(int page, int lineNum)
         }
     }
 
-    return 0;
+    return putLine;
 }
 
 // Puts page in disk
