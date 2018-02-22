@@ -46,6 +46,15 @@ int swap(int page, int lineNum); // Swaps page from physical memory and disk
 int putToDisk(char page[16]); // Puts page in disk
 int getFromDisk(char (*pageHolder)[16], int lineNum); // Gets page from disk
 
+void logMem(); // DEBUGGING ONLY; DISPLAYS PHYSICAL MEMORY
+void logMem()
+{
+    for(int i = 0; i < 64; i++)
+    {
+        printf("INDEX %d IN MEMORY IS: [%c]\n", i, memory[i]);
+    }
+}
+
 // Returns a corresponding page based on an address
 int find_page(int addr)
 {
@@ -402,24 +411,34 @@ int swap(int page, int lineNum)
     int start = find_address(page);
     char putTemp[16];
     char getTemp[16];
+    int replaceMem = -1;
 
     for(int i = 0; i < 16; i++)
     {
         putTemp[i] = memory[start + i];
     }
 
+    replaceMem = getFromDisk(&getTemp, lineNum);
+
     if(putToDisk(putTemp) == -1)
     {
         printf("ERROR: Could not put page to disk.\n");
         return -1;
     }
-
-    else
-        if(getFromDisk(&getTemp, lineNum) == -1)
+    else if(replaceMem != -1)
+    {
+        for(int i = 0; i < 16; i++)
         {
-            printf("ERROR: Could not get page from disk.\n");
-            return -1;
+            memory[start + i] = getTemp[i];
         }
+    }
+    else // Cannot swap in new memory after putting old in disk, replace memory with empty page
+    {
+        for(int i = 0; i < 16; i++)
+        {
+            memory[start + i] = '*';
+        }
+    }
 
     return 0;
 }
@@ -428,65 +447,9 @@ int swap(int page, int lineNum)
 int putToDisk(char page[16])
 {
     int line_placement = -1; // Where line is on disk
-    int newLine = -1;
     char currChar;
-
-    disk = fopen("disk.txt", "r+");
-    if(disk == NULL)
-    {
-        printf("ERROR: Cannot open disk.\n");
-    }
-
-    do
-    {
-        currChar = fgetc(disk);
-        if(feof(disk) && line_placement == -1) // Empty file, put page in
-        {
-            for(int i = 0; i < 16; i++)
-            {
-                fputc(page[i], disk);
-            }
-            fputc('\n', disk);
-            line_placement = 0;
-            break;
-        }
-        else
-        {
-            if(currChar == '\n')
-            {
-                newLine = 1;
-                line_placement++;
-            }
-            else if(currChar == '*' && newLine != -1) // Last character was a new line
-            {
-                fseek(disk, -1, SEEK_CUR);
-                for(int i = 0; i < 16; i++)
-                {
-                    fputc(page[i], disk);
-                }
-                fputc('\n', disk);
-                newLine = -1;
-            }
-            else
-            {
-                newLine = -1;
-            }
-        }
-    }
-    while(currChar != EOF);
-
-
-    fclose(disk);
-
-    return line_placement;
-}
-
-// Gets page from disk
-int getFromDisk(char (*pageHolder)[16], int lineNum)
-{
-    int line_placement = -1; // Where line is on disk
-    int newLine = -1;
-    char currChar;
+    int pageCounter = 0; // Counts each character of a page
+    int emptyPage = 1;
 
     disk = fopen("disk.txt", "r+");
     if(disk == NULL)
@@ -498,44 +461,122 @@ int getFromDisk(char (*pageHolder)[16], int lineNum)
     do
     {
         currChar = fgetc(disk);
-        if(feof(disk) && line_placement == -1)
+        pageCounter++;
+
+        if(feof(disk)) // Empty file, put page in
         {
-            printf("ERROR: Cannot get page from empty disk.\n");
-            fclose(disk);
-            return -1;
+            for(int i = 0; i < 16; i++)
+            {
+                fputc(page[i], disk);
+                if(page[i] != '*')
+                    emptyPage = -1;
+            }
+            if(emptyPage != -1)
+            {
+                fseek(disk, -16, SEEK_CUR);
+                for(int i = 0; i < 16; i++)
+                {
+                    fputc('!', disk);
+                }
+            }
+            fputc('\n', disk);
+            line_placement = 0;
+            break;
         }
         else
         {
-            if(currChar == '\n')
+            if(pageCounter == 16)
             {
-                newLine = 1;
-                line_placement++;
+                line_placement++;emptyPage = 1;
             }
-            else if(currChar != '*' && newLine != -1 && line_placement == lineNum) // Last character was a new line
+            if(currChar == '!' && pageCounter == 16) // Last character was a new line
             {
-                fseek(disk, -1, SEEK_CUR);
+                fseek(disk, -16, SEEK_CUR);
                 for(int i = 0; i < 16; i++)
                 {
-                    currChar = fgetc(disk);
-                    (*pageHolder)[i] = currChar;
-                    fseek(disk, -1, SEEK_CUR);
-                    fputc('*', disk);
+                    fputc(page[i], disk);
+                    if(page[i] != '*')
+                    emptyPage = -1;
                 }
-                fputc('\n', disk);
-                newLine = -1;
+                if(emptyPage != -1)
+                {
+                    fseek(disk, -16, SEEK_CUR);
+                    for(int i = 0; i < 16; i++)
+                    {
+                        fputc('!', disk);
+                    }
+                }
                 break;
             }
-            else
+            else if(pageCounter > 16)
             {
-                newLine = -1;
+                pageCounter = 0;
+
             }
         }
     }
     while(currChar != EOF);
 
     fclose(disk);
+    return line_placement;
+}
 
-    return 0;
+// Gets page from disk
+int getFromDisk(char (*pageHolder)[16], int lineNum)
+{
+    int line_placement = -1; // Where line is on disk
+    char currChar;
+    int pageCounter = 0; // Counts each character of a page
+
+    disk = fopen("disk.txt", "r+");
+    if(disk == NULL)
+    {
+        return -1;
+    }
+
+    do
+    {
+        currChar = fgetc(disk);
+        pageCounter++;
+
+        if(feof(disk) && line_placement == -1)
+        {
+            printf("ERROR: Cannot get page from empty disk.\n");
+
+            fclose(disk);
+            return -1;
+        }
+        else
+        {
+            if(pageCounter == 16)
+            {
+                line_placement++;
+            }
+            if(line_placement == lineNum && pageCounter == 16) // Last character was a new line
+            {
+                fseek(disk, -16, SEEK_CUR);
+                for(int i = 0; i < 16; i++)
+                {
+                    currChar = fgetc(disk);
+                    (*pageHolder)[i] = currChar;
+                    fseek(disk, -1, SEEK_CUR);
+                    fputc('!', disk);
+                }
+                fputc('\n', disk);
+
+                fclose(disk);
+                return 0;
+            }
+            else if(pageCounter > 16)
+            {
+                pageCounter = 0;
+            }
+        }
+    }
+    while(currChar != EOF);
+
+    fclose(disk);
+    return -1;
 }
 
 // Main
@@ -668,5 +709,12 @@ int main(int argc, char *argv[])
             load(pid, v_addr);
         }
     }
+
+    // SWAP TESTING
+    swap(0, 0);
+    logMem();
+    swap(0, 0);
+    logMem();
+
     return 0;
 }
