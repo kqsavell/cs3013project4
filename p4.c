@@ -499,6 +499,7 @@ int swap(int page, int lineNum)
         {
             pid_array[i] = -1;
             ptable_flag = i;
+		break;
         }
     }
 
@@ -652,7 +653,8 @@ int putToDisk(char page[16])
     do
     {
         currChar = fgetc(disk);
-        pageCounter++;
+        if(currChar != '\n')
+        	pageCounter++;
 
         if(feof(disk)) // Empty file, put page in
         {
@@ -708,7 +710,8 @@ int getFromDisk(char (*pageHolder)[16], int lineNum)
     do
     {
         currChar = fgetc(disk);
-        pageCounter++;
+	    if(currChar != '\n')
+        	pageCounter++;
 
         if(feof(disk) && line_placement == -1)
         {
