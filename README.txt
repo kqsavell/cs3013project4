@@ -19,3 +19,6 @@ Load - Loads a value from the supplied virtual address of a process.
 Running the Program:
 In the command line, "./p4 [process] [intruction] [address] [value]" will run the program. "process" is the process number that the specific instruction line will use (0-3), "instruction" is the instruction that will be executed (map, store or load), "address" is the virtual address that will be used for the instruction and process, and "value" is the page permission for map (0 = read only, 1 - read and write), the value to put in memory for store (1-255), and is unused for load.
 Alternatively, multiple instruction lines can be piped in using a text file. Ex: "./p4 < test.txt"
+
+Testing:
+Testing was done with the "test.txt" file. We piped this file into p4 to run multiple instructions back-to-back. We mainly tested the program against the example instructions that were shown in the 
