@@ -169,12 +169,16 @@ int create_ptable(int pid)
 
     if (been_allocated == -1)
     {
-        if (on_disk[pid][0] != -1)
+        /*if (on_disk[pid][0] != -1)
         {
             int to_evict = evict(pid);
             swap(to_evict, on_disk[pid][0]);
             on_disk[pid][0] = -1;
-        }
+        }*/
+        replace_page(pid, -1);
+        int p_page = last_evict;
+        pid_array[pid] = find_address(p_page);
+        printf("Put page table for PID %d into physical frame %d\n", pid, p_page);
     }
 }
 
