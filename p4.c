@@ -548,6 +548,25 @@ int swap(int page, int lineNum)
         }
     }
 
+		// Find the process & page we are putting in memory
+	if(lineNum != -1)
+	{
+		for(int i = 0; i < MAX_PROC; i++)
+		{
+			for(int j = 0; j < MAX_PROC + 1; j++)
+			{
+				if(on_disk[i][j] == lineNum)
+				{
+					on_disk[i][j] = -1;
+					if(j != 0)
+						remap(i, j - 1, page);
+					else if(j == 0)
+						pid_array[i] = start;
+				}
+			}
+		}
+	}
+	
     // Find the process and page we are removing from memory
 if(ptable_flag != -1) // Swapping out page instead of page table
 {
@@ -611,26 +630,6 @@ if(ptable_flag != -1) // Swapping out page instead of page table
 	{
 	on_disk[ptable_flag][0] = putLine;	
 	}
-	
-	// Find the process & page we are putting in memory
-	if(lineNum != -1)
-	{
-		for(int i = 0; i < MAX_PROC; i++)
-		{
-			for(int j = 0; j < MAX_PROC + 1; j++)
-			{
-				if(on_disk[i][j] == lineNum)
-				{
-					on_disk[i][j] = -1;
-					if(j != 0)
-						remap(i, j - 1, page);
-					else if(j == 0)
-						pid_array[i] = start;
-				}
-			}
-		}
-	}
-	
 	
 	
     //logMem();
