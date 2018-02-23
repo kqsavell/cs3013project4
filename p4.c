@@ -387,27 +387,10 @@ int remap(int pid, int v_page, int p_page)
     int correct_p = 0; // Flag for correct page to overwrite
     for(int j = 0; j < 16; j++)
     {
-	if (p_flag == 1) // Pointer on physical page position
+	if (memory[write_addr] == ',') // Pointer on in-between position
 	{
-	    if (correct_p == 1) // If correct page to overwrite, do that
-	    {
-		sprintf(buffer, "%d", p_page);
-		strcat(full_str, buffer);
-		write_addr += write_mem(write_addr, full_str);
-		break;
-	    }
-	    p_flag = 0;
-	    v_flag = 0;
-	}
-	else if (memory[write_addr] == ',') // Pointer on in-between position
-	{
-	    v_flag = 0;
-	    p_flag = 1;
-	}
-
-	else if ((memory[write_addr] == v_page + '0') && (v_flag == 1)) // If correct virtual page, prepare overwrite
-	{
-	    correct_p = 1;
+		if(memory[write_addr - 1] == v_page)
+			memory[write_addr] = p_page;
 	}
 	write_addr++;
     }
