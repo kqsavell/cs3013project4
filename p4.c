@@ -44,7 +44,7 @@ int map(int pid, int v_addr, int r_value); // Maps virtual page to physical page
 int store(int pid, int v_addr, int value); // Stores value in physical memory
 int load(int pid, int v_addr); // Loads value from physical memory
 int evict(int pid); // Returns physical page that is to be evicted
-int remap(int pid, int v_page); //Remaps virtual page if pulled from disk
+int remap(int pid, int v_page, int p_page); //Remaps virtual page if pulled from disk
 int replace_page(int pid, int v_page); // Handles page replacements
 int swap(int page, int lineNum); // Swaps page from physical memory and disk, returns lineNum page was put in disk
 int putToDisk(char page[16]); // Puts page in disk
@@ -62,22 +62,26 @@ void logMem()
 // Returns a corresponding page based on an address
 int find_page(int addr)
 {
-    if (addr < 16)
+    if (addr >= 0 && addr < 16)
     {
         return 0;
     }
-    else if (addr < 32)
+    else if (addr >= 16 && addr < 32)
     {
         return 1;
     }
-    else if (addr < 48)
+    else if (addr >= 32 && addr < 48)
     {
         return 2;
     }
-    else
+    else if(addr >= 48 && addr < 64)
     {
         return 3;
     }
+else
+{
+printf("ERROR: Address %d must be in range 0 to 63\n", addr);
+}
 }
 
 // Returns address of the start of a given page
@@ -95,10 +99,14 @@ int find_address(int page)
     {
         return 32;
     }
-    else
+    else if(page == 3)
     {
         return 48;
     }
+else
+{
+printf("ERROR: Page %d must be in range 0 to 3\n", page);
+}
 }
 
 // Writes integer into memory, start is the physical address we want to write to
@@ -220,7 +228,6 @@ int map(int pid, int v_addr, int r_value)
     }
 
     // Create new entry
-    // memset(&buffer[0], 0, sizeof(buffer));
     else
     {
         for(int i = 0; i < 4; i++)
@@ -388,43 +395,19 @@ int evict(int pid)
 }
 
 // Changes mapping of virtual page in a page table when swapping in from disk
-int remap(int pid, int v_page)
+int remap(int pid, int v_page, int p_page)
 {
-    // Change physical address of page and overwrite entry in page table
-    char full_str[16] = "";
-    char buffer[10];
-    int p_page = last_evict;
-
     int write_addr = pid_array[pid];
-    int v_flag = 1; // Whether specific entry is virtual page or not
-    int p_flag = 0; // Whether specific entry is a physical page or not
-    int correct_p = 0; // Flag for correct page to overwrite
     for(int j = 0; j < 16; j++)
     {
-        if (p_flag == 1) // Pointer on physical page position
+        if (memory[write_addr] == ',') // Pointer on in-between position
         {
-            if (correct_p == 1) // If correct page to overwrite, do that
-            {
-                sprintf(buffer, "%d", p_page);
-                strcat(full_str, buffer);
-                write_addr += write_mem(write_addr, full_str);
-                break;
-            }
-            p_flag = 0;
-            v_flag = 0;
-        }
-        else if (memory[write_addr] == ',') // Pointer on in-between position
-        {
-            v_flag = 0;
-            p_flag = 1;
-        }
+	if(memory[write_addr - 1] == v_page)
+	memory[write_addr + 1] = p_page;            
 
-        else if ((memory[write_addr] == v_page + '0') && (v_flag == 1)) // If correct virtual page, prepare overwrite
-        {
-            correct_p = 1;
-        }
-        write_addr++;
-    }
+		write_addr++;
+	}
+}
 
     printf("Remapped virtual page %d into physical frame %d\n", v_page, p_page);
 
@@ -515,12 +498,16 @@ int replace_page(int pid, int v_page)
             }
         }
     }
+if(r_pid == -1)
+{
+printf("ccALERT, PROCESS DONT EXIST\n");
+}
 
     new_line = swap(to_evict, disk_loc); // Swap pages
     free_list[to_evict] = -1; // Deallocated physical page
     if (v_page != -1)
     {
-        remap(pid, v_page); // Remaps swapped in page to a physical page
+        remap(pid, v_page, to_evict); // Remaps swapped in page to a physical page
         on_disk[pid][v_page + 1] = -1; // Update page that was swapped from disk
         free_list[to_evict] = 0;
     }
