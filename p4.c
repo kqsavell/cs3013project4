@@ -171,7 +171,9 @@ int create_ptable(int pid)
 
     if (been_allocated == -1)
     {
-        replace_page(pid, -1);
+	 int to_evict = evict(pid);
+        swap(to_evict, -1);
+        //replace_page(pid, -1);
         int p_page = last_evict;
         pid_array[pid] = find_address(p_page);
         printf("Put page table for PID %d into physical frame %d\n", pid, p_page);
@@ -239,7 +241,9 @@ int map(int pid, int v_addr, int r_value)
         }
         if (been_allocated == -1)
         {
-            replace_page(pid, -1);
+		int to_evict = evict(pid);
+        swap(to_evict, -1);
+            //replace_page(pid, -1);
             write_list[pid][v_page] = r_value; // Set permissions
             page_exists[pid][v_page] = 1; // Set existence of page
             been_allocated = 1;
@@ -275,8 +279,6 @@ int store(int pid, int v_addr, int value)
     {
         int to_evict = evict(pid);
         swap(to_evict, on_disk[pid][0]);
-        on_disk[pid][0] = -1;
-        pid_array[pid] = find_address(to_evict);
     }
     int phys_addr = translate_ptable(pid, v_addr);
     int v_page= find_page(v_addr);
@@ -288,7 +290,9 @@ int store(int pid, int v_addr, int value)
         {
             if (on_disk[pid][v_page + 1] != -1)
             {
-                replace_page(pid, v_page);
+		    int to_evict = evict(pid);
+        swap(to_evict, on_disk[pid][v_page+1]);
+                //replace_page(pid, v_page);
             }
             sprintf(buffer, "%d", value);
             int num_bytes = write_mem(phys_addr, buffer);
@@ -323,13 +327,13 @@ int load(int pid, int v_addr)
     {
         int to_evict = evict(pid);
         swap(to_evict, on_disk[pid][0]);
-        on_disk[pid][0] = -1;
-        pid_array[pid] = find_address(to_evict);
     }
     printf("On disk for v_page %d: %d\n", v_page, on_disk[pid][v_page + 1]);
     if (on_disk[pid][v_page + 1] != -1)
     {
-        replace_page(pid, v_page);
+        int to_evict = evict(pid);
+        swap(to_evict, on_disk[pid][v_page+1]);
+	    //replace_page(pid, v_page);
     }
     int phys_addr = translate_ptable(pid, v_addr);
     int value = read_mem(phys_addr);
