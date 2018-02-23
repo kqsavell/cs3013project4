@@ -1,0 +1,29 @@
+Instruction?: 0 map 0 1
+Put page table for PID 0 into physical frame 0
+Mapped virtual address 0 (page 0) into physical frame 1
+Instruction?: 1 map 0 1
+Put page table for PID 1 into physical frame 2
+Mapped virtual address 0 (page 0) into physical frame 3
+Instruction?: 1 store 3 10
+Stored value 10 at virtual address 3 (physical address 51)
+Instruction?: 2 map 0 1
+Swapped frame 1 to disk at swap slot 0
+Put page table for PID 2 into physical frame 1
+Swapped frame 2 to disk at swap slot 0
+Put page table for PID 1 into swap slot 0
+Mapped virtual address 0 (page 0) into physical frame 2
+Instruction?: 3 map 0 1
+Swapped frame 3 to disk at swap slot 0
+Swapped disk slot 0 into frame 3
+Swapped frame 3 to disk at swap slot 0
+Put page table for PID 1 into swap slot 0
+Put page table for PID 3 into physical frame 3
+Swapped frame 0 to disk at swap slot 0
+Put page table for PID 0 into swap slot 0
+Mapped virtual address 0 (page 0) into physical frame 0
+Instruction?: 1 load 3 0
+Swapped frame 1 to disk at swap slot 0
+Swapped disk slot 0 into frame 1
+Put page table for PID 2 into swap slot 0
+ERROR: No value stored at virtual address 3 (physical address -1)
+Instruction?: End of File. Exiting

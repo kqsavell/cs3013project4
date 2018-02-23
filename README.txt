@@ -1,6 +1,6 @@
 Kyle Savell & Antony Qin
 CS3013 Operating Systems
-Project 4: Simulated Virtul Memory
+Project 4: Simulated Virtual Memory
 
 Files:
 p4.c - C file containing the code for the virtual memory.
@@ -21,4 +21,4 @@ In the command line, "./p4 [process] [intruction] [address] [value]" will run th
 Alternatively, multiple instruction lines can be piped in using a text file. Ex: "./p4 < test.txt"
 
 Testing:
-Testing was done with the "test.txt" file. We piped this file into p4 to run multiple instructions back-to-back. We mainly tested the program against the example instructions that were shown in the 
+Testing was done with "test1.txt", "test2,txt" and "test3.txt". We piped these files into p4 to run multiple instructions back-to-back. We mainly tested the program against the example instructions that were shown in the rubric, as tested by "test1.txt". "test2.txt" tests edge cases where errors should occur. "test3.txt" tests the case where 4 processes are active at once. The output of these tests can be found in the files "test1_output.txt", "test2_output.txt" and "test3_output.txt".

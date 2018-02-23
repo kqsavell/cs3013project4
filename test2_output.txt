@@ -1,0 +1,20 @@
+Instruction?: 0 map 0 1
+Put page table for PID 0 into physical frame 0
+Mapped virtual address 0 (page 0) into physical frame 1
+Instruction?: -1 map 0 1
+ERROR: Process ID -1 is invalid! Only ID's 0 to 3 are allowed
+Instruction?: 4 map 0 1
+ERROR: Process ID 4 is invalid! Only ID's 0 to 3 are allowed
+Instruction?: 0 map -1 1
+ERROR: Virtual address -1 is invalid! Only virtual addresses 0 to 63 are allowed
+Instruction?: 0 map 64 1
+ERROR: Virtual address 64 is invalid! Only virtual addresses 0 to 63 are allowed
+Instruction?: 0 map 63 1
+Mapped virtual address 63 (page 3) into physical frame 2
+Instruction?: 0 store 63 255
+ERROR: Write goes over end of page! Value not stored
+Instruction?: 0 load 64 0
+ERROR: Virtual address 64 is invalid! Only virtual addresses 0 to 63 are allowed
+Instruction?: 0 load 63 0
+ERROR: No value stored at virtual address 63 (physical address 47)
+Instruction?: End of File. Exiting

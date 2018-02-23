@@ -62,7 +62,22 @@ void logMem()
 // Returns a corresponding page based on an address
 int find_page(int addr)
 {
-    return (addr/16);
+    if (addr < 16)
+    {
+        return 0;
+    }
+    else if (addr < 32)
+    {
+        return 1;
+    }
+    else if (addr < 48)
+    {
+        return 2;
+    }
+    else
+    {
+        return 3;
+    }
 }
 
 // Returns address of the start of a given page
@@ -174,6 +189,7 @@ int create_ptable(int pid)
         replace_page(pid, -1);
         int p_page = last_evict;
         pid_array[pid] = find_address(p_page);
+        free_list[p_page] = 0;
         printf("Put page table for PID %d into physical frame %d\n", pid, p_page);
     }
 }
@@ -191,7 +207,7 @@ int map(int pid, int v_addr, int r_value)
     int p_page;
 
     // Create page table for process if one does not exist
-    if (page_table == -1)
+    if (page_table == -1 && on_disk[pid][0] == -1)
     {
         create_ptable(pid);
     }
@@ -244,8 +260,10 @@ int map(int pid, int v_addr, int r_value)
             page_exists[pid][v_page] = 1; // Set existence of page
             been_allocated = 1;
             p_page = last_evict;
+            free_list[p_page] = 0;
 
             int write_addr = pid_array[pid];
+            //printf("page table address: %d, physical frame to map to: %d\n", write_addr, p_page);
             for(int j = 0; j < 16; j++)
             {
                 if (memory[write_addr] == '*') // Write entry to ptable
@@ -271,12 +289,12 @@ int map(int pid, int v_addr, int r_value)
 // Stores value in physical memory
 int store(int pid, int v_addr, int value)
 {
-    if (on_disk[pid][0] != -1)
+    if (on_disk[pid][0] != -1 || pid_array[pid] == -1)
     {
         int to_evict = evict(pid);
         swap(to_evict, on_disk[pid][0]);
         on_disk[pid][0] = -1;
-        pid_array[pid] = find_address(to_evict);
+        pid_array[pid] = find_address(last_evict);
     }
     int phys_addr = translate_ptable(pid, v_addr);
     int v_page= find_page(v_addr);
@@ -318,15 +336,15 @@ int store(int pid, int v_addr, int value)
 int load(int pid, int v_addr)
 {
     int v_page = find_page(v_addr);
-    printf("On disk for pid %d: %d\n", pid, on_disk[pid][0]);
-    if (on_disk[pid][0] != -1)
+    //printf("On disk for ptable %d: %d, Ptable Address: %d\n", pid, on_disk[pid][0], pid_array[pid]);
+    if (on_disk[pid][0] != -1 || pid_array[pid] == -1)
     {
         int to_evict = evict(pid);
         swap(to_evict, on_disk[pid][0]);
         on_disk[pid][0] = -1;
-        pid_array[pid] = find_address(to_evict);
+        pid_array[pid] = find_address(last_evict);
     }
-    printf("On disk for v_page %d: %d\n", v_page, on_disk[pid][v_page + 1]);
+    //printf("On disk for v_page %d: %d\n", v_page, on_disk[pid][v_page + 1]);
     if (on_disk[pid][v_page + 1] != -1)
     {
         replace_page(pid, v_page);
@@ -352,14 +370,14 @@ int evict(int pid)
     int ptable = find_page(pid_array[pid]); // Physical page where pid's ptable is
 
     int cur_evict = last_evict + 1;
-    if (cur_evict >= 5)
+    if (cur_evict >= 4)
     {
         cur_evict = 0;
     }
     if (cur_evict == ptable)
     {
         cur_evict++;
-        if (cur_evict >= 5)
+        if (cur_evict >= 4)
         {
             cur_evict = 0;
         }
@@ -375,55 +393,41 @@ int remap(int pid, int v_page)
     // Change physical address of page and overwrite entry in page table
     char full_str[16] = "";
     char buffer[10];
-    int been_allocated = -1;
-    int p_page;
-    for(int i = 0; i < 4; i++)
+    int p_page = last_evict;
+
+    int write_addr = pid_array[pid];
+    int v_flag = 1; // Whether specific entry is virtual page or not
+    int p_flag = 0; // Whether specific entry is a physical page or not
+    int correct_p = 0; // Flag for correct page to overwrite
+    for(int j = 0; j < 16; j++)
     {
-        if (free_list[i] == -1)
+        if (p_flag == 1) // Pointer on physical page position
         {
-            free_list[i] = 0;
-            been_allocated = 1;
-            p_page = i;
-
-            int write_addr = pid_array[pid];
-            int v_flag = 1; // Whether specific entry is virtual page or not
-            int p_flag = 0; // Whether specific entry is a physical page or not
-            int correct_p = 0; // Flag for correct page to overwrite
-            for(int j = 0; j < 16; j++)
+            if (correct_p == 1) // If correct page to overwrite, do that
             {
-                if (p_flag == 1) // Pointer on physical page position
-                {
-                    if (correct_p == 1) // If correct page to overwrite, do that
-                    {
-                        sprintf(buffer, "%d", p_page);
-                        strcat(full_str, buffer);
-                        write_addr += write_mem(write_addr, full_str);
-                        break;
-                    }
-                    p_flag = 0;
-                    v_flag = 0;
-                }
-                else if (memory[write_addr] == ',') // Pointer on in-between position
-                {
-                    v_flag = 0;
-                    p_flag = 1;
-                }
-
-                else if ((memory[write_addr] == v_page + '0') && (v_flag == 1)) // If correct virtual page, prepare overwrite
-                {
-                    correct_p = 1;
-                }
-                write_addr++;
+                sprintf(buffer, "%d", p_page);
+                strcat(full_str, buffer);
+                write_addr += write_mem(write_addr, full_str);
+                break;
             }
-
-            printf("Remapped virtual page %d into physical frame %d\n", v_page, p_page);
-            break;
+            p_flag = 0;
+            v_flag = 0;
         }
+        else if (memory[write_addr] == ',') // Pointer on in-between position
+        {
+            v_flag = 0;
+            p_flag = 1;
+        }
+
+        else if ((memory[write_addr] == v_page + '0') && (v_flag == 1)) // If correct virtual page, prepare overwrite
+        {
+            correct_p = 1;
+        }
+        write_addr++;
     }
-    if (been_allocated == -1)
-    {
-        printf("ERROR: No free space, Memory is full!\n");
-    }
+
+    printf("Remapped virtual page %d into physical frame %d\n", v_page, p_page);
+
     return 0; //Success
 }
 
@@ -432,6 +436,9 @@ int replace_page(int pid, int v_page)
 {
     int to_evict = evict(pid);
     int disk_loc = -1;
+    int r_ptable = -1;
+    int r_pid = -1;
+    int r_vpage = -1;
     if (v_page != -1)
     {
         disk_loc = on_disk[pid][v_page + 1];
@@ -439,42 +446,26 @@ int replace_page(int pid, int v_page)
     }
     int new_line = -1;
 
-    // Find the process and page we are removing from memory
-    /*int r_pid = -1;
-    int r_vpage = -1;
     for (int i = 0; i < MAX_PROC; i++)
     {
-        if (pid_array[i] != -1)
+        if (find_address(to_evict) == pid_array[i])
         {
-            int cur_addr = pid_array[i];
-            for (int j = 0; j < 16; j++) // Only look up to end of page table virtual page
-            {
-                if (memory[cur_addr] == ',') // PTE Separator
-                {
-                    if(memory[cur_addr + 1] - '0' == to_evict)
-                    {
-                        r_pid = i;
-                        r_vpage = memory[cur_addr - 1] - '0';
-                        printf("test1\n");
-                    }
-                }
-                cur_addr++;
-            }
+            r_ptable = i;
         }
     }
-
-    // Page table we need is on disk
-    int cur_ptable = -1;
-    if (r_pid == -1)
+    if (r_ptable != -1)
     {
+        r_vpage = -1;
+        r_pid = r_ptable;
+    }
+
+    else
+    {
+        // Find the process and page we are removing from memory
         for (int i = 0; i < MAX_PROC; i++)
         {
-            cur_ptable = on_disk[i][0];
-            printf("test3: On disk for pid %d: is %d, table address is %d\n", i, on_disk[i][0], pid_array[i]);
-            if (on_disk[i][0] != -1)
+            if (pid_array[i] != -1)
             {
-                swap(to_evict, cur_ptable);
-                pid_array[i] = find_address(to_evict);
                 int cur_addr = pid_array[i];
                 for (int j = 0; j < 16; j++) // Only look up to end of page table virtual page
                 {
@@ -482,17 +473,48 @@ int replace_page(int pid, int v_page)
                     {
                         if(memory[cur_addr + 1] - '0' == to_evict)
                         {
-                            r_pid = j;
+                            r_pid = i;
                             r_vpage = memory[cur_addr - 1] - '0';
-                            printf("test2\n");
+                            //printf("test1\n");
                         }
                     }
                     cur_addr++;
                 }
             }
-            if (r_pid != -1) break;
         }
-    }*/
+
+        // Page table we need is on disk
+        int cur_ptable = -1;
+        if (r_pid == -1)
+        {
+            for (int i = 0; i < MAX_PROC; i++)
+            {
+                cur_ptable = on_disk[i][0];
+                //printf("test3: On disk for pid %d: is %d, table address is %d\n", i, on_disk[i][0], pid_array[i]);
+                if (on_disk[i][0] != -1)
+                {
+                    swap(to_evict, cur_ptable);
+                    pid_array[i] = find_address(to_evict);
+                    int cur_addr = pid_array[i];
+                    for (int j = 0; j < 16; j++) // Only look up to end of page table virtual page
+                    {
+                        //printf("%d, %d, %c\n", i, cur_addr, memory[cur_addr]);
+                        if (memory[cur_addr] == ',') // PTE Separator
+                        {
+                            if(memory[cur_addr + 1] - '0' == to_evict)
+                            {
+                                r_pid = i;
+                                r_vpage = memory[cur_addr - 1] - '0';
+                                //printf("test2\n");
+                            }
+                        }
+                        cur_addr++;
+                    }
+                }
+                if (r_pid != -1) break;
+            }
+        }
+    }
 
     new_line = swap(to_evict, disk_loc); // Swap pages
     free_list[to_evict] = -1; // Deallocated physical page
@@ -500,9 +522,12 @@ int replace_page(int pid, int v_page)
     {
         remap(pid, v_page); // Remaps swapped in page to a physical page
         on_disk[pid][v_page + 1] = -1; // Update page that was swapped from disk
+        free_list[to_evict] = 0;
     }
-    printf("Replace pid: %d, Replace v_page: %d\n", r_pid, r_vpage);
+    //printf("Replace pid: %d, Replace v_page: %d\n", r_pid, r_vpage);
     on_disk[r_pid][r_vpage + 1] = new_line; // Update page that was swapped to disk
+    //printf("To evict: %d\n", to_evict);
+    //logMem();
 
     return 0; // Success
 }
@@ -531,6 +556,11 @@ int swap(int page, int lineNum)
     {
         putTemp[i] = memory[start + i];
     }
+    /*for (int i = 0; i < 16; i++)
+    {
+        printf("%c", putTemp[i]);
+    }
+    printf("\n");*/
 
     if(lineNum != -1) // If lineNum is -1, don't try to get something from disk
     	replaceMem = getFromDisk(&getTemp, lineNum);
@@ -555,81 +585,23 @@ int swap(int page, int lineNum)
             memory[start + i] = '*';
         }
     }
-
-    // Find the process and page we are removing from memory
-    int r_pid = -1;
-    int r_vpage = -1;
-    for (int i = 0; i < MAX_PROC; i++)
-    {
-        if (pid_array[i] != -1)
-        {
-            int cur_addr = pid_array[i];
-            for (int j = 0; j < 16; j++) // Only look up to end of page table virtual page
-            {
-                if (memory[cur_addr] == ',') // PTE Separator
-                {
-                    if(memory[cur_addr + 1] - '0' == to_evict)
-                    {
-                        r_pid = i;
-                        r_vpage = memory[cur_addr - 1] - '0';
-                        printf("test1\n");
-                    }
-                }
-                cur_addr++;
-            }
-        }
-    }
-
-    // Page table we need is on disk
-    int cur_ptable = -1;
-    if (r_pid == -1)
-    {
-        for (int i = 0; i < MAX_PROC; i++)
-        {
-            cur_ptable = on_disk[i][0];
-            printf("test3: On disk for pid %d: is %d, table address is %d\n", i, on_disk[i][0], pid_array[i]);
-            if (on_disk[i][0] != -1)
-            {
-                swap(to_evict, cur_ptable);
-                pid_array[i] = find_address(to_evict);
-                int cur_addr = pid_array[i];
-                for (int j = 0; j < 16; j++) // Only look up to end of page table virtual page
-                {
-                    if (memory[cur_addr] == ',') // PTE Separator
-                    {
-                        if(memory[cur_addr + 1] - '0' == to_evict)
-                        {
-                            r_pid = j;
-                            r_vpage = memory[cur_addr - 1] - '0';
-                            printf("test2\n");
-                        }
-                    }
-                    cur_addr++;
-                }
-            }
-            if (r_pid != -1) break;
-        }
-    }
-
-    if (v_page != -1)
-    {
-        remap(pid, v_page); // Remaps swapped in page to a physical page
-        on_disk[pid][v_page + 1] = -1; // Update page that was swapped from disk
-    }
-    printf("Replace pid: %d, Replace v_page: %d\n", r_pid, r_vpage);
-    on_disk[r_pid][r_vpage + 1] = new_line; //
-
-    logMem();
+    //logMem();
     printf("Swapped frame %d to disk at swap slot %d\n", page, putLine);
     if (lineNum != -1)
     {
         printf("Swapped disk slot %d into frame %d\n", lineNum, page);
-        on_disk[]
+        //printf("%s\n", getTemp);
     }
     if (ptable_flag != -1)
     {
         printf("Put page table for PID %d into swap slot %d\n", ptable_flag, putLine);
+        /*for (int i = 0; i < 16; i++)
+        {
+            printf("%c", putTemp[i]);
+        }
+        printf("\n");*/
         on_disk[ptable_flag][0] = putLine;
+        pid_array[ptable_flag] = -1;
     }
     return putLine;
 }
@@ -903,9 +875,10 @@ int main(int argc, char *argv[])
         }
     }
 
+    /*logMem();
     for (int i = 0; i < MAX_PROC; i++)
     {
         printf("%d\n", pid_array[i]);
     }
-    return 0;
+    return 0;*/
 }
