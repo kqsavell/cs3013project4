@@ -653,7 +653,6 @@ int putToDisk(char page[16])
     do
     {
         currChar = fgetc(disk);
-        if(currChar != '\n')
         	pageCounter++;
 
         if(feof(disk)) // Empty file, put page in
@@ -668,9 +667,11 @@ int putToDisk(char page[16])
         }
         else // Look for a free space
         {
+		printf("%c", currChar);
             if(pageCounter == 16)
             {
                 line_placement++;
+		    printf(" end \n");
             }
             if(currChar == '!' && pageCounter == 16) // This line in disk is free, all '!'
             {
@@ -710,7 +711,6 @@ int getFromDisk(char (*pageHolder)[16], int lineNum)
     do
     {
         currChar = fgetc(disk);
-	    if(currChar != '\n')
         	pageCounter++;
 
         if(feof(disk) && line_placement == -1)
