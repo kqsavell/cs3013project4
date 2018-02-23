@@ -193,7 +193,7 @@ int map(int pid, int v_addr, int r_value)
     int p_page;
 
     // Create page table for process if one does not exist
-    if (page_table == -1)
+    if (page_table == -1 && on_disk[pid][0] == -1)
     {
         create_ptable(pid);
     }
