@@ -571,7 +571,7 @@ int swap(int page, int lineNum)
 				if(j != 0)
 					remap(i, j);
 				else
-					pid_array[i] = -1;
+					pid_array[i] = start;
 			}
 		}
 	}
