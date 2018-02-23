@@ -508,7 +508,10 @@ int swap(int page, int lineNum)
     }
 
     if(lineNum != -1) // If lineNum is -1, don't try to get something from disk
+    {
     	replaceMem = getFromDisk(&getTemp, lineNum);
+	    free_list[page] = 0;
+    }
     putLine = putToDisk(putTemp);
 
     if(putLine == -1)
