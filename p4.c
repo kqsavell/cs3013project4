@@ -629,7 +629,7 @@ if(ptable_flag != -1) // Swapping out page instead of page table
     }
 	if(r_pid != -1 && r_vpage != -1)
 	{
-		on_disk[r_pid][r_vpage] = putLine;
+		on_disk[r_pid][r_vpage + 1] = putLine;
 	}
 	else
 	{
