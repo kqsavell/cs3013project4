@@ -560,8 +560,9 @@ int swap(int page, int lineNum)
 					on_disk[i][j] = -1;
 					if(j != 0)
 						remap(i, j - 1, page);
-					else if(j == 0)
+					else if(j == 0 && ptable_flag == -1)
 						pid_array[i] = start;
+					break;
 				}
 			}
 		}
