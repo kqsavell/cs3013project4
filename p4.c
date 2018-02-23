@@ -363,14 +363,14 @@ int evict(int pid)
     int ptable = find_page(pid_array[pid]); // Physical page where pid's ptable is
 
     int cur_evict = last_evict + 1;
-    if (cur_evict >= 5)
+    if (cur_evict >= 4)
     {
         cur_evict = 0;
     }
     if (cur_evict == ptable)
     {
         cur_evict++;
-        if (cur_evict >= 5)
+        if (cur_evict >= 4)
         {
             cur_evict = 0;
         }
