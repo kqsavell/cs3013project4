@@ -493,7 +493,7 @@ int replace_page(int pid, int v_page)
             if (r_pid != -1) break;
         }
     }*/
-
+/*
     new_line = swap(to_evict, disk_loc); // Swap pages
     free_list[to_evict] = -1; // Deallocated physical page
     if (v_page != -1)
@@ -503,7 +503,7 @@ int replace_page(int pid, int v_page)
     }
     printf("Replace pid: %d, Replace v_page: %d\n", r_pid, r_vpage);
     on_disk[r_pid][r_vpage + 1] = new_line; // Update page that was swapped to disk
-
+*/
     return 0; // Success
 }
 
@@ -641,7 +641,6 @@ if(ptable_flag != -1) // Swapping out page instead of page table
     if (lineNum != -1)
     {
         printf("Swapped disk slot %d into frame %d\n", lineNum, page);
-        on_disk[]
     }
     if (ptable_flag != -1)
     {
