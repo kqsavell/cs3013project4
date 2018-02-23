@@ -529,7 +529,8 @@ int swap(int page, int lineNum)
         putTemp[i] = memory[start + i];
     }
 
-    replaceMem = getFromDisk(&getTemp, lineNum);
+    if(lineNum != -1) // If lineNum is -1, don't try to get something from disk
+    	replaceMem = getFromDisk(&getTemp, lineNum);
     putLine = putToDisk(putTemp);
 
     if(putLine == -1)
@@ -571,12 +572,11 @@ int putToDisk(char page[16])
     int line_placement = -1; // Where line is on disk
     char currChar;
     int pageCounter = 0; // Counts each character of a page
-    int emptyPage = 1;
 
     disk = fopen("disk.txt", "r+");
     if(disk == NULL)
     {
-        printf("ERROR: Cannot open disk.\n");
+        printf("ERROR: Cannot open disk in putToDisk.\n");
         return -1;
     }
 
@@ -590,51 +590,29 @@ int putToDisk(char page[16])
             for(int i = 0; i < 16; i++)
             {
                 fputc(page[i], disk);
-                if(page[i] != '*')
-                    emptyPage = -1;
             }
-            /*if(emptyPage != -1)
-            {
-                fseek(disk, -16, SEEK_CUR);
-                for(int i = 0; i < 16; i++)
-                {
-                    fputc('!', disk);
-                }
-            }*/
             fputc('\n', disk);
             line_placement = 0;
             break;
         }
-        else
+        else // Look for a free space
         {
             if(pageCounter == 16)
             {
                 line_placement++;
-                emptyPage = 1;
             }
-            if(currChar == '!' && pageCounter == 16) // Last character was a new line
+            if(currChar == '!' && pageCounter == 16) // This line in disk is free, all '!'
             {
                 fseek(disk, -16, SEEK_CUR);
                 for(int i = 0; i < 16; i++)
                 {
                     fputc(page[i], disk);
-                    if(page[i] != '*')
-                        emptyPage = -1;
                 }
-                /*if(emptyPage != -1)
-                {
-                    fseek(disk, -16, SEEK_CUR);
-                    for(int i = 0; i < 16; i++)
-                    {
-                        fputc('!', disk);
-                    }
-                }*/
                 break;
             }
             else if(pageCounter > 16)
             {
                 pageCounter = 0;
-
             }
         }
     }
@@ -654,6 +632,7 @@ int getFromDisk(char (*pageHolder)[16], int lineNum)
     disk = fopen("disk.txt", "r+");
     if(disk == NULL)
     {
+	printf("ERROR: Cannot open disk in getFromDisk.\n");
         return -1;
     }
 
@@ -662,7 +641,7 @@ int getFromDisk(char (*pageHolder)[16], int lineNum)
         currChar = fgetc(disk);
         pageCounter++;
 
-        if(feof(disk) && line_placement == -1 && lineNum != -1)
+        if(feof(disk) && line_placement == -1)
         {
             printf("ERROR: Cannot get page from empty disk.\n");
 
@@ -675,7 +654,7 @@ int getFromDisk(char (*pageHolder)[16], int lineNum)
             {
                 line_placement++;
             }
-            if(line_placement == lineNum && pageCounter == 16) // Last character was a new line
+            if(line_placement == lineNum && pageCounter == 16) // Get this line from disk
             {
                 fseek(disk, -16, SEEK_CUR);
                 for(int i = 0; i < 16; i++)
@@ -683,7 +662,7 @@ int getFromDisk(char (*pageHolder)[16], int lineNum)
                     currChar = fgetc(disk);
                     (*pageHolder)[i] = currChar;
                     fseek(disk, -1, SEEK_CUR);
-                    fputc('!', disk);
+                    fputc('!', disk); // Replace this line with a free line, all '!'
                 }
                 fputc('\n', disk);
 
@@ -718,7 +697,13 @@ int main(int argc, char *argv[])
 
     // Clean disk
     disk = fopen("disk.txt", "w");
-    fclose(disk);
+    if(disk == NULL)
+    {
+	printf("ERROR: Cannot open disk in main.");
+	return -1;
+    }
+    else
+    	fclose(disk);
 
     // Initialize ptable, free and write lists
     for (int i = 0; i < MAX_PROC; i++)
@@ -736,7 +721,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    //Initialiaze physical memory
+    // Initialize physical memory
     for (int i = 0; i < SIZE; i++)
     {
         memory[i] = '*';
@@ -745,7 +730,7 @@ int main(int argc, char *argv[])
     while (is_end != 1)
     {
         printf("Instruction?: ");
-        // Recieve stdin
+        // Receive stdin
         if (argc <= 1)
         {
             // Read sequence from file
@@ -755,7 +740,7 @@ int main(int argc, char *argv[])
                 printf("End of File. Exiting\n");
                 break;
             }
-            buffer[strcspn(buffer, "\n")] = 0; //Remove newline
+            buffer[strcspn(buffer, "\n")] = 0; // Remove newline
             strncpy(cmd_seq, &buffer[0], sizeof(cmd_seq));
             printf("%s\n", cmd_seq);
 
