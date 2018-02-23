@@ -390,7 +390,7 @@ int remap(int pid, int v_page, int p_page)
 	if (memory[write_addr] == ',') // Pointer on in-between position
 	{
 		if(memory[write_addr - 1] == v_page)
-			memory[write_addr] = p_page;
+			memory[write_addr + 1] = p_page;
 	}
 	write_addr++;
     }
