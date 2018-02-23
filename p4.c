@@ -613,20 +613,25 @@ if(ptable_flag != -1) // Swapping out page instead of page table
 	}
 	
 	// Find the process & page we are putting in memory
-	for(int i = 0; i < MAX_PROC; i++)
+	if(lineNum ! -1)
 	{
-		for(int j = 0; j < MAX_PROC + 1; j++)
+		for(int i = 0; i < MAX_PROC; i++)
 		{
-			if(on_disk[i][j] == lineNum)
+			for(int j = 0; j < MAX_PROC + 1; j++)
 			{
-				on_disk[i][j] = -1;
-				if(j != 0)
-					remap(i, j - 1, page);
-				else if(j == 0)
-					pid_array[i] = start;
+				if(on_disk[i][j] == lineNum)
+				{
+					on_disk[i][j] = -1;
+					if(j != 0)
+						remap(i, j - 1, page);
+					else if(j == 0)
+						pid_array[i] = start;
+				}
 			}
 		}
 	}
+	
+	
 	
     //logMem();
     printf("Swapped frame %d to disk at swap slot %d\n", page, putLine);
