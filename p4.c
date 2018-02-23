@@ -62,7 +62,14 @@ void logMem()
 // Returns a corresponding page based on an address
 int find_page(int addr)
 {
-    return (addr/16);
+	if(addr >= 0 && addr < 16)
+		return 0;
+	else if(addr >= 16 && addr < 32)
+		return 1;
+	else if(addr >= 32 && addr < 48)
+		return 2;
+	else if(addr >= 48 && addr < 64)
+		return 3;
 }
 
 // Returns address of the start of a given page
