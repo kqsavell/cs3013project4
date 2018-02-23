@@ -569,8 +569,8 @@ int swap(int page, int lineNum)
 			{
 				on_disk[i][j] = -1;
 				if(j != 0)
-					remap(i, j);
-				else
+					remap(i, j - 1);
+				else if(j == 0)
 					pid_array[i] = start;
 			}
 		}
