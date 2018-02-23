@@ -380,7 +380,6 @@ int remap(int pid, int v_page, int p_page)
     char full_str[16] = "";
     char buffer[10];
     int been_allocated = -1;
-    int p_page;
 
     int write_addr = pid_array[pid];
     int v_flag = 1; // Whether specific entry is virtual page or not
@@ -414,8 +413,6 @@ int remap(int pid, int v_page, int p_page)
     }
 
     printf("Remapped virtual page %d into physical frame %d\n", v_page, p_page);
-    break;
-}
     
 
     return 0; //Success
