@@ -578,7 +578,7 @@ if(ptable_flag != -1) // Swapping out page instead of page table
         if (pid_array[i] != -1) // Find page table
         {
             int cur_addr = pid_array[i];
-		printf("cc page table of %d is ", i)
+		printf("cc page table of %d is ", i);
             for (int j = 0; j < 16; j++) // Only look up to end of page table virtual page
             {
 		    printf("%c", memory[cur_addr]);
