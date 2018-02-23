@@ -434,6 +434,7 @@ int remap(int pid, int v_page)
 // Swaps page, handles array data for disk location
 int replace_page(int pid, int v_page)
 {
+	/*
     int to_evict = evict(pid);
     int disk_loc = -1;
     if (v_page != -1)
@@ -441,7 +442,7 @@ int replace_page(int pid, int v_page)
         disk_loc = on_disk[pid][v_page + 1];
         if (disk_loc == -1) disk_loc = 0;
     }
-    int new_line = -1;
+    int new_line = -1;*/
 
     // Find the process and page we are removing from memory
     /*int r_pid = -1;
