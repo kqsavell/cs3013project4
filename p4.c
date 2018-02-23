@@ -613,7 +613,7 @@ if(ptable_flag != -1) // Swapping out page instead of page table
 	}
 	
 	// Find the process & page we are putting in memory
-	if(lineNum ! -1)
+	if(lineNum != -1)
 	{
 		for(int i = 0; i < MAX_PROC; i++)
 		{
